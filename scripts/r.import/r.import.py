@@ -109,6 +109,10 @@
 # % label: Override projection check (use current location's projection)
 # % description: Assume that the dataset has the same projection as the current location
 # %end
+# %flag
+# % key: z
+# % description: Convert zero (0) values at the imported raster's edge to null() using i.zero2null
+# %end
 # %rules
 # % required: output,-e
 # %end
@@ -183,6 +187,11 @@ def main():
             )
         )
 
+    if flags['z']:
+        if not grass.find_program('i.zero2null', '--help'):
+            grass.fatal(_("The 'i.zero2null' module was not found, you can install it with:"
+                          "\ng.extension i.zero2null"))
+
     # try r.in.gdal directly first
     additional_flags = "l" if flags["l"] else ""
     if flags["o"]:
@@ -201,6 +210,8 @@ def main():
             parameters["band"] = bands
         try:
             grass.run_command("r.in.gdal", **parameters)
+            if flags["z"]:
+                grass.run_command("i.zero2null", map=output, quiet=True)
             grass.verbose(
                 _("Input <%s> successfully imported without reprojection")
                 % GDALdatasource
@@ -297,7 +308,10 @@ def main():
         grass.fatal(_("Unable to import GDAL dataset <%s>") % GDALdatasource)
 
     outfiles = grass.list_grouped("raster", env=src_env)["PERMANENT"]
-
+    import pdb; pdb.set_trace()
+    if flags["z"]:
+        for rast in outfiles:
+            grass.run_command("i.zero2null", map=rast, env=src_env, quiet=True)
     # is output a group?
     group = False
     path = os.path.join(GISDBASE, TMPLOC, "group", output)
